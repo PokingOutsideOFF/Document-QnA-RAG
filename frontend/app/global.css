@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*Smooth scrolbar for the caht panel*/
+::-webkit-scrollbar{
+  width: 4px;
+}
+::-webkit-scrollbar-track{
+  background: transparent;
+}
+::-webkit-scrollbar-thumb{
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+/* Prevent body scroll the app is full screen layout */
+html, body{
+  height: 100%;
+  overflow: hidden;
+}
