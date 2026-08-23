@@ -61,7 +61,7 @@ export function useChat() {
   }, [messages, isStreaming, hydrated]);
 
   const sendMessage = useCallback(
-    (question: string) => {
+    (question: string, model?: string, filterFilenames?: string[]) => {
       if (isStreaming || !question.trim()) return;
 
       const userMsg: Message = {
@@ -124,6 +124,9 @@ export function useChat() {
           );
           setIsStreaming(false);
         },
+
+        model,
+        filterFilenames
       );
     },
     [isStreaming],

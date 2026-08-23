@@ -53,13 +53,14 @@ from typing import AsyncIterator, List, Dict
 
 from config import settings
 
-async def stream_ollama(prompt: str, system_prompt: str) -> AsyncIterator[str]:
+async def stream_ollama(prompt: str, system_prompt: str, model: str | None = None) -> AsyncIterator[str]:
     """
     Calls Ollama's /api/generate endpoint with stream=True.
     Yields individual token strins as they arrive from the model.
+    `model` overrides the default from config, used by the model switcher.
     """
     payload = {
-        "model": settings.OLLAMA_MODEL,
+        "model": model or settings.OLLAMA_MODEL,
         "prompt": prompt,
         "system": system_prompt,
         "stream": True,

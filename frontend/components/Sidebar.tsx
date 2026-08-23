@@ -8,6 +8,8 @@ import { listOllamaModels } from "@/lib/api";
 interface Props {
   model: string;
   onModelChange: (model: string) => void;
+  selectedDocs: string[];
+  onToggleDoc: (filename: string) => void;
 }
 
 /**
@@ -17,7 +19,12 @@ interface Props {
  *  Lifting state to page.tsx(parent) and passing it down as props is standard solution.
  */
 
-export default function Sidebar({ model, onModelChange }: Props) {
+export default function Sidebar({
+  model,
+  onModelChange,
+  selectedDocs,
+  onToggleDoc,
+}: Props) {
   const { documents, isLoading, uploadStatus, upload, remove } = useDocuments();
   const [isDragging, setIsDragging] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -101,33 +108,68 @@ export default function Sidebar({ model, onModelChange }: Props) {
       </div>
       {/* Document List */}
       <div className="flex-1 overflow-y-auto px-3 py-2 mt-1">
-        {documents?.length === 0 ? (
+        {documents.length === 0 ? (
           <p className="text-xs text-gray-400 text-center mt-4">
             No documents indexed yet
           </p>
         ) : (
-          <ul className="space-y-1">
-            {documents?.map((filename) => (
-              <li
-                key={filename}
-                className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-200 group"
+          <>
+            {/* Hint shown when user has selected a subset */}
+            {selectedDocs.length > 0 && (
+              <p className="text-xs text-indigo-500 mb-2 px-1">
+                Querying {selectedDocs.length} of {documents.length} doc
+                {documents.length != 1 ? "s" : ""}
+              </p>
+            )}
+            <ul className="space-y-1">
+              {documents?.map((filename) => {
+                const isSelected = selectedDocs.includes(filename);
+                return (
+                  <li
+                    key={filename}
+                    className={`flex items-center justify-between rounded-lg
+                              px-3 py-2 border group tranisiton-colors 
+                              ${
+                                isSelected
+                                  ? "bg-indigo-50 border-indigo-200"
+                                  : "bg-white border-gray-200 "
+                              }`}
+                  >
+                    {/* Checkbox + filename */}
+                    <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1 text-wrap break-all">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggleDoc(filename)}
+                        className="accent-indigo-600 flex-shrink-0"
+                      />
+                      <span className="text-sm">{fileIcon(filename)}</span>
+                      <span className="text-xs text-gray-700 text-wrap">
+                        {filename}
+                      </span>
+                    </label>
+                    <button
+                      onClick={() => remove(filename)}
+                      className="text-gray-300 hover:text-red-500 transition-colors 
+                                opacity-0 group-hover:opacity-100 flex-shrink-0 ml-1"
+                      title="Remove Document"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {/* Clear selection shortcut */}
+            {selectedDocs.length > 0 && (
+              <button
+                onClick={() => selectedDocs.forEach(onToggleDoc)}
+                className="mt-2 text-xs text-gray-400 hover:text-gray-600 px-1"
               >
-                <div className="flex items-center gap-2 min-w-0 text-wrap break-all">
-                  <span className="text-sm">{fileIcon(filename)}</span>
-                  <span className="text-xs text-gray-700 text-wrap">
-                    {filename}
-                  </span>
-                </div>
-                <button
-                  onClick={() => remove(filename)}
-                  className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover: opacity-100 flex-shrink-0 ml-1"
-                  title="Remove Document"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
+                Clear Selection (search all)
+              </button>
+            )}
+          </>
         )}
       </div>
 

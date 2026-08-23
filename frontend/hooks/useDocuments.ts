@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { deleteDocument, listDocuments, uploadDocument } from "@/lib/api";
 
 export function useDocuments(){
-    const [documents, setDocuments] = useState<string[]>();
+    const [documents, setDocuments] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState<string|null>();
+    const [uploadStatus, setUploadStatus] = useState<string|null>(null);
     
     const refresh = useCallback(async () =>{
         try{

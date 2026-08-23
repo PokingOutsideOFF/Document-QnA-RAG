@@ -16,9 +16,12 @@ class Citation(BaseModel):
     distance: float #cosine distance between the query and the chunk embedding
 
 
-class QueryResult(BaseModel):
+class QueryRequest(BaseModel):
     question: str
     top_k: Optional[int] = None # overrides config default when provided
+    model: Optional[str] = None # Ollama model to use (override config default)
+    document_filter: Optional[List[str]] = None # if set, only search those filenames
+
 
 # Every Server-Sent Event the backend sends to the browser is one of these shapes:
 # {"type": "citation", "citations": [...]} - sent first, before any tokens

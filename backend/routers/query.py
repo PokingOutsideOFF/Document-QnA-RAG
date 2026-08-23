@@ -38,7 +38,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from config import settings
-from models.schemas import Citation
+from models.schemas import Citation, QueryRequest
 from services.embedder import embed_query
 from services.llm import build_prompt, stream_ollama
 from services.vector_store import query_similar
@@ -46,10 +46,19 @@ from services.vector_store import query_similar
 router = APIRouter(prefix="/query", tags=["query"])
 
 @router.post("/")
-async def query_document(request: Request):
-    body = await request.json()
-    question = body.get("question", "").strip()
-    top_k = body.get("top_k", settings.TOP_K)
+async def query_document(body: QueryRequest):
+    """ WHY switch from `request: Request:` + `body.get()` to Pydantic model?
+            The old approach parsed the raw JSON dict manually - no validation, no docs.
+            A Pydantic models gives us:
+                - Automatic type validation (wrong type= clear 422 error)
+                - Auto generated API docs at /docs showing every accepted field
+                - Default values declared in one place (the schema), not scattered in get() calls
+       This is FastAPI-idomatic way to handle body requests
+    """ 
+    question = body.question.strip()
+    top_k = body.top_k or settings.TOP_K
+    document_filter = body.document_filter # None = serach all documents
+    model = body.model # None = use config default
 
     async def event_generator():
         if not question:
@@ -62,7 +71,19 @@ async def query_document(request: Request):
         query_vec = embed_query(question)
 
         # Step 2: retrieve the top-K most semantically similar chunks
-        retrieved = query_similar(query_vec, top_k=top_k)
+        retrieved = query_similar(query_vec, top_k=top_k, filter_filenames = document_filter)
+
+        # Step 2b: drop chunks that are too far from query (low relevance).
+        # WHY filter here (not inside query_similar)?
+        # Chroma doesn't support distance thresholds natively - it always returns
+        # exactly top_k results. We apply the threshold ourselves after retireval.
+        # This is intentionally a post-retrieval step, not a DB-level filter
+        retrieved = [r for r in retrieved if r["distance"] <= settings.RELEVANCE_THRESHOLD]
+        if not retrieved:
+            yield f'data: {json.dumps({"type": "token", "content": "I could not find any relevant passages in the uploaded document for that question"})}\n\n'
+            yield f'data: {json.dumps({"type": "done"})}\n\n'
+            return
+
 
         # Step 3: send citations FIRST so the frontend has them before tokens arrive
         citations = [
@@ -80,7 +101,7 @@ async def query_document(request: Request):
         system_prompt, user_prompt = build_prompt(question, retrieved)
 
         # Step 5: stream tokens from Ollama one by one
-        async for token in stream_ollama(user_prompt, system_prompt):
+        async for token in stream_ollama(user_prompt, system_prompt, model=model):
             yield f'data: {json.dumps({"type": "token", "content": token})}\n\n'
 
         # Step 6: signal that streaming is complete

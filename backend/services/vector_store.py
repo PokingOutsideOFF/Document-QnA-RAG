@@ -69,16 +69,34 @@ def add_chunks(chunks: List[Chunk], embeddings: List[List[float]]) -> None:
         } for c in chunks],
     )
 
-def query_similar(query_embedding: List[float], top_k: int) -> List[Dict[str, Any]]:
+def query_similar(query_embedding: List[float], top_k: int, filter_filenames: List[str] | None = None) -> List[Dict[str, Any]]:
     """
     Returns the top_k chunks whose embeddings are closest to the query vector.
     Each result dict has: text, metadata (filename, chunk_index), distance.
     Distance is cosine distance: 0 = identical, 2 = opposite
+    
+    WHY the `where` clause works here:
+     Chroma stores metadata (source_filename, chunk_index, etc.) alongside each 
+     vector. The `where` clause filters the candidate set BEFORE the vector search
+     runs, so only chunks from the selected documents are considered.
+     This is more efficient than post-filtering: fewer vectors to serach = faster.
+
+     $in in Chroma's "any of these values" operator, equivalent to SQL's IN (...)
+     For a single document we skip $in and use a direct equality check. Chroma handles 
+     both, but equality is slightly simpler for Chroma to evaluate    
     """
+    where = None
+    if filter_filenames:
+        if len(filter_filenames) == 1:
+            where = {"sourc_filename": filter_filenames[0]}
+        else:
+            where = {"source_filename": {"$in": filter_filenames}}
+
     results = _collection.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
-        include=["documents", "metadatas", "distances"]
+        include=["documents", "metadatas", "distances"],
+        where=where,
     )
     # Chroma returns nested lists because it supports batch queries
     # [0] unpacks the single-query case.
