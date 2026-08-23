@@ -11,6 +11,7 @@ interface Props {
   onSend: (question: string) => void;
   onStop: () => void;
   onClear: () => void;
+  onExport: () => void;
 }
 
 export default function ChatPanel({
@@ -19,6 +20,7 @@ export default function ChatPanel({
   onSend,
   onStop,
   onClear,
+  onExport,
 }: Props) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -50,12 +52,20 @@ export default function ChatPanel({
       <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white">
         <h1 className="font-semibold text-gray-800">Document Q&A</h1>
         {messages.length > 0 && !isStreaming && (
-          <button
-            onClick={onClear}
-            className="text-xs text-gray-400 hover:Ltext-gray-600 transition-colors"
-          >
-            Clear chat
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onExport}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              Export
+            </button>
+            <button
+              onClick={onClear}
+              className="text-xs text-gray-400 hover:Ltext-gray-600 transition-colors"
+            >
+              Clear chat
+            </button>
+          </div>
         )}
       </div>
 
@@ -100,7 +110,7 @@ export default function ChatPanel({
               className="px-4 py-2.5 bg-red-500 text-white text-sm rounded-xl 
                         hover:bg-red-600 transition-colros font-medium"
             >
-              <Square className="h-4 w-4"/>
+              <Square className="h-4 w-4" />
             </button>
           ) : (
             <button
@@ -110,7 +120,7 @@ export default function ChatPanel({
                         hover:bg-indigo-700 transition-colors font-medium 
                         disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <SendHorizontal className="h-4 w-4"/>
+              <SendHorizontal className="h-4 w-4" />
             </button>
           )}
         </form>

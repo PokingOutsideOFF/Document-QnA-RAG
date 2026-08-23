@@ -39,6 +39,7 @@ function loadHistory(): Message[] {
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
 
@@ -46,13 +47,18 @@ export function useChat() {
   // Only save completed messages (not mid-stream) so we never save half written messages
 
   useEffect(() => {
-    if (isStreaming) return;
+    setMessages(loadHistory());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || isStreaming) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     } catch {
       // localStorage can be unavailable in some browser contexts - fail silently
     }
-  }, [messages, isStreaming]);
+  }, [messages, isStreaming, hydrated]);
 
   const sendMessage = useCallback(
     (question: string) => {
@@ -143,5 +149,52 @@ export function useChat() {
     }
   }, [isStreaming]);
 
-  return { messages, isStreaming, sendMessage, stopStreaming, clearMessages };
+  /**
+   * exportChat: converts messages array into a Markdown file and triggers browser download
+   *
+   * HOW BROWSER FILE DOWNLOAD WORKS (without a server):
+   *  1. Build the file content as a string.
+   *  2. Wrap it in a Blob - a browser object representing raw binary data (here: text/ markdown)
+   *  3. Create an object URL -  a temporary in-memory URL that points to that Blob. It lives only as this tab is open.
+   *  4. Programatically click an invisible <a download> link pointing to that URL.
+   *  5. Revoke the URL immediately after - this releases the memory held by the Blob.
+   *
+   * WHY NOT use a server endpoint for this?
+   *  The data is already in the browser (React state). Sending it to server and back just to get a file would be wasteful
+   *  round trip. The Blob approach is instant, works offline, and keeps server stateless.
+   */
+  const exportChat = useCallback(() => {
+    if (messages.length === 0) return;
+
+    const lines: string[] = ["# Chat Export \n"];
+
+    for (const msg of messages) {
+      if (msg.isStreaming) continue; //skip incomplete messages
+
+      if (msg.role === "user") {
+        lines.push(`***You:*** ${msg.content}\n`);
+      } else {
+        lines.push(`***Assitant:*** ${msg.content}\n`);
+
+        if (msg.citations && msg.citations.length > 0) {
+          lines.push("***Sources:***");
+          msg.citations.forEach((c, i) => {
+            const relevance = Math.round(Math.max(0, (1 - c.distance) * 100));
+            lines.push(` - [${i+1}] ${c.source_filename} (chunk ${c.chunk_index}, ${relevance}% relavance): "${c.chunk_text.slice(0, 120)}... "`);
+          });
+          lines.push("");
+        }
+      }
+
+    }
+    const blob = new Blob([lines.join("\n")], {type: "text/markdown"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [messages]);
+
+  return { messages, isStreaming, sendMessage, stopStreaming, clearMessages, exportChat };
 }

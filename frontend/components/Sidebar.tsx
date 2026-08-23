@@ -1,13 +1,34 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDocuments } from "@/hooks/useDocuments";
-import { Hourglass, File, Folder } from "lucide-react";
+import { Hourglass, File, Folder, Trash2 } from "lucide-react";
+import { listOllamaModels } from "@/lib/api";
 
-export default function Sidebar() {
+interface Props {
+  model: string;
+  onModelChange: (model: string) => void;
+}
+
+/**
+ * WHY Sidebar now accepts props:
+ *  The selected model needs to be shared with ChatPanel - both are children of
+ *  page.tsx. If Sidebar owned model state internally, ChatPanel could never read it.
+ *  Lifting state to page.tsx(parent) and passing it down as props is standard solution.
+ */
+
+export default function Sidebar({ model, onModelChange }: Props) {
   const { documents, isLoading, uploadStatus, upload, remove } = useDocuments();
   const [isDragging, setIsDragging] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch installed Ollama models once on mount
+  useEffect(() => {
+    listOllamaModels().then((models) => {
+      setAvailableModels(models);
+    });
+  }, []);
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
@@ -45,7 +66,13 @@ export default function Sidebar() {
                 transition-colors
                 ${isDragging ? "border-indigo-400 bg-indigo-50" : "border-gray-300 hover:border-indigo-300 hover:bg-gray-100"}`}
         >
-          <div>{isLoading ? <Hourglass  className="h-4 w-4"/>: <Folder className="h-4 w-4"/>}</div>
+          <div>
+            {isLoading ? (
+              <Hourglass className="h-4 w-4" />
+            ) : (
+              <Folder className="h-4 w-4" />
+            )}
+          </div>
           <p className="text-xs text-gray-500 font-medium">
             {isLoading ? "Indexing..." : "Drop files or click to upload"}
           </p>
@@ -83,26 +110,49 @@ export default function Sidebar() {
             {documents?.map((filename) => (
               <li
                 key={filename}
-                className="flex items-center jsutify-boolean bg-white rounded-lg px-3 py-2 border border-gray-200 group"
+                className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-200 group"
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 text-wrap break-all">
                   <span className="text-sm">{fileIcon(filename)}</span>
-                  <span className="text-xs text-gray-700">{filename}</span>
+                  <span className="text-xs text-gray-700 text-wrap">
+                    {filename}
+                  </span>
                 </div>
                 <button
                   onClick={() => remove(filename)}
                   className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover: opacity-100 flex-shrink-0 ml-1"
                   title="Remove Document"
-                ></button>
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {/* Footer note */}
-      <div className="px-4 py-3 border-t border-gray-200">
-        <p className="text-xsw text-gray-400">Powered by Ollama + Chroma</p>
+      {/* Model Selector */}
+      <div className="px-3 py-4 border-t border-gray-200">
+        <label className="block text-xs text-gray-400 mb-1.5 font-medium">
+          Model
+        </label>
+        {availableModels.length > 0 ? (
+          <select
+            value={model}
+            onChange={(e) => onModelChange(e.target.value)}
+            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5
+                       bg-white text-gray-700 focus:outline-none focus:ring-2
+                      focus:ring-indigo-300"
+          >
+            {availableModels.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs text-gray-400">{model}</p>
+        )}
       </div>
     </div>
   );
@@ -110,7 +160,7 @@ export default function Sidebar() {
 
 function fileIcon(filename: string) {
   const ext = filename.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return <File className="text-red-500 h-4 w-4"/>;
-  if (ext === "docx") return <File className="text-blue-500 h-4 w-4"/>;
+  if (ext === "pdf") return <File className="text-red-500 h-4 w-4" />;
+  if (ext === "docx") return <File className="text-blue-500 h-4 w-4" />;
   return "";
 }

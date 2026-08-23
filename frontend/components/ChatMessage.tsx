@@ -43,11 +43,12 @@ export default function ChatMessage({ message }: Props) {
                 : "bg-gray-100 text-gray-900 rounded-bl-sm"
             }`}
         >
-          <p className="whitespace-pre-wrap"> {message.content} </p>
+          <p className="whitespace-pre-wrap"> {message.content}
           {/* Blinking cursor while model is generating  */}
           {message.isStreaming && (
             <span className="inline-block w-0.5 h-4 bg-gray-500 ml-0.5 align-middle animate-pulse" />
           )}
+          </p>
           {/* Copy button - appears on hover for assitant messages only */}
           {!isUser && !message.isStreaming && message.content && (
             <button
