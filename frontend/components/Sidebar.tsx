@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDocuments } from "@/hooks/useDocuments";
-import { Hourglass, File, Folder, Trash2 } from "lucide-react";
+import { Hourglass, File, Folder, Trash2, Moon, Sun } from "lucide-react";
 import { listOllamaModels } from "@/lib/api";
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   onModelChange: (model: string) => void;
   selectedDocs: string[];
   onToggleDoc: (filename: string) => void;
+  darkMode: boolean;
+  onToggleDark: () => void;
 }
 
 /**
@@ -24,6 +26,8 @@ export default function Sidebar({
   onModelChange,
   selectedDocs,
   onToggleDoc,
+  darkMode,
+  onToggleDark,
 }: Props) {
   const { documents, isLoading, uploadStatus, upload, remove } = useDocuments();
   const [isDragging, setIsDragging] = useState(false);
@@ -52,11 +56,28 @@ export default function Sidebar({
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200">
-        <h2 className="font-semibold text-gray-700 text-sm">Documents</h2>
-        <p className="text-xs text-gray-400 mt-0.5">PDF, DOCX, or TXT</p>
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div>
+          <h2 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">
+            Documents
+          </h2>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+            PDF, DOCX, or TXT
+          </p>
+        </div>
+        <button
+          onClick={onToggleDark}
+          title="Toggle dark mode"
+          className="text-lg hover:opacity-70 transition-opacity"
+        >
+          {darkMode ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
       {/* Drop zone */}
@@ -69,9 +90,9 @@ export default function Sidebar({
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
-          className={`flex gap-4 item-center border-2 border-dashed rounded-xl p-4 text-center cursor-pointer
+              className={`flex gap-4 items-center border-2 border-dashed rounded-xl p-4 text-center cursor-pointer
                 transition-colors
-                ${isDragging ? "border-indigo-400 bg-indigo-50" : "border-gray-300 hover:border-indigo-300 hover:bg-gray-100"}`}
+                ${isDragging ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30" : "border-gray-300 dark:border-gray-600 hover:border-indigo-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
         >
           <div>
             {isLoading ? (
@@ -109,7 +130,7 @@ export default function Sidebar({
       {/* Document List */}
       <div className="flex-1 overflow-y-auto px-3 py-2 mt-1">
         {documents.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center mt-4">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-4">
             No documents indexed yet
           </p>
         ) : (
@@ -128,11 +149,11 @@ export default function Sidebar({
                   <li
                     key={filename}
                     className={`flex items-center justify-between rounded-lg
-                              px-3 py-2 border group tranisiton-colors 
+                              px-3 py-2 border group transition-colors 
                               ${
                                 isSelected
-                                  ? "bg-indigo-50 border-indigo-200"
-                                  : "bg-white border-gray-200 "
+                                  ? "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700"
+                                  : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                               }`}
                   >
                     {/* Checkbox + filename */}
@@ -144,13 +165,13 @@ export default function Sidebar({
                         className="accent-indigo-600 flex-shrink-0"
                       />
                       <span className="text-sm">{fileIcon(filename)}</span>
-                      <span className="text-xs text-gray-700 text-wrap">
+                      <span className="text-xs text-gray-700 dark:text-gray-300 text-wrap">
                         {filename}
                       </span>
                     </label>
                     <button
                       onClick={() => remove(filename)}
-                      className="text-gray-300 hover:text-red-500 transition-colors 
+                      className="text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors 
                                 opacity-0 group-hover:opacity-100 flex-shrink-0 ml-1"
                       title="Remove Document"
                     >
@@ -174,17 +195,17 @@ export default function Sidebar({
       </div>
 
       {/* Model Selector */}
-      <div className="px-3 py-4 border-t border-gray-200">
-        <label className="block text-xs text-gray-400 mb-1.5 font-medium">
+      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-700">
+        <label className="block text-xs text-gray-400 dark:text-gray-500 mb-1.5 font-medium">
           Model
         </label>
         {availableModels.length > 0 ? (
           <select
             value={model}
             onChange={(e) => onModelChange(e.target.value)}
-            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5
-                       bg-white text-gray-700 focus:outline-none focus:ring-2
-                      focus:ring-indigo-300"
+            className="w-full text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5
+                       bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 
+                       focus:outline-none focus:ring-2 focus:ring-indigo-300"
           >
             {availableModels.map((m) => (
               <option key={m} value={m}>
@@ -193,7 +214,7 @@ export default function Sidebar({
             ))}
           </select>
         ) : (
-          <p className="text-xs text-gray-400">{model}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">{model}</p>
         )}
       </div>
     </div>

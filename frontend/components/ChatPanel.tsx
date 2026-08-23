@@ -47,10 +47,10 @@ export default function ChatPanel({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-950">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white">
-        <h1 className="font-semibold text-gray-800">Document Q&A</h1>
+      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <h1 className="font-semibold text-gray-800 dark:text-gray-100">Document Q&A</h1>
         {messages.length > 0 && !isStreaming && (
           <div className="flex gap-3">
             <button
@@ -61,7 +61,7 @@ export default function ChatPanel({
             </button>
             <button
               onClick={onClear}
-              className="text-xs text-gray-400 hover:Ltext-gray-600 transition-colors"
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
             >
               Clear chat
             </button>
@@ -88,7 +88,7 @@ export default function ChatPanel({
       </div>
 
       {/* Input form */}
-      <div className="border-t border-gray200 bg-white px-4 py-3">
+      <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4 py-3">
         <form onSubmit={handleSubmit} className="flex gap-2 items-end">
           <textarea
             value={input}
@@ -99,7 +99,7 @@ export default function ChatPanel({
             disabled={isStreaming}
             className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm
                         focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:bg-gray-50 
-                        disabled:text-gray-400 max-h-32 overflow-y-auto"
+                        disabled:text-gray-400 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-800 max-h-32 overflow-y-auto"
             style={{ minHeight: "42px" }}
           />
 

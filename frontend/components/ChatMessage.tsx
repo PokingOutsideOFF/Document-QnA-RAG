@@ -40,7 +40,7 @@ export default function ChatMessage({ message }: Props) {
             ${
               isUser
                 ? "bg-indigo-600 text-white rounded-br-sm"
-                : "bg-gray-100 text-gray-900 rounded-bl-sm"
+                : "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 rounded-bl-sm"
             }`}
         >
           <p className="whitespace-pre-wrap"> {message.content}
@@ -54,7 +54,7 @@ export default function ChatMessage({ message }: Props) {
             <button
               onClick={handleCopy}
               className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity 
-                        text-xs text-gray-400 hover:text-gray-600 bg-white rounded px-1.5 
+                        text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-white dark:bg-gray-700 rounded px-1.5 
                         py-0.5 shadow-sm"
             >
               {copied ? "Copied" : <Copy className="h-4 w-4"/>}
@@ -77,7 +77,7 @@ export default function ChatMessage({ message }: Props) {
 
       {/* Avatar for use */}
       {isUser && (
-        <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs font-bold ml-2 mt-1 flex-shrink-0">
+        <div className="w-7 h-7 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-xs font-bold ml-2 mt-1 flex-shrink-0">
           <User className="h-4 w-4" />
         </div>
       )}
