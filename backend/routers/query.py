@@ -59,6 +59,9 @@ async def query_document(body: QueryRequest):
     top_k = body.top_k or settings.TOP_K
     document_filter = body.document_filter # None = serach all documents
     model = body.model # None = use config default
+    # Convert Pydantic HistoryMessage objects -> plain dicts for llm.py
+    history = [{"role": m.role, "content": m.content} for m in body.history] if body.history else []
+
 
     async def event_generator():
         if not question:
@@ -97,11 +100,11 @@ async def query_document(body: QueryRequest):
         ]
         yield f'data: {json.dumps({"type": "citation", "citations": citations})}\n\n'
 
-        # Step 4: build the prompt (system + context + question)
-        system_prompt, user_prompt = build_prompt(question, retrieved)
+        # Step 4: build the messages list (system + history + context + question)
+        messages = build_prompt(question, retrieved, history=history)
 
         # Step 5: stream tokens from Ollama one by one
-        async for token in stream_ollama(user_prompt, system_prompt, model=model):
+        async for token in stream_ollama(messages, model=model):
             yield f'data: {json.dumps({"type": "token", "content": token})}\n\n'
 
         # Step 6: signal that streaming is complete

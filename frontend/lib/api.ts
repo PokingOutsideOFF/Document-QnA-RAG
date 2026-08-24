@@ -77,14 +77,20 @@ export function streamQuery(
   onDone: () => void,
   onError: (error: string) => void,
   model?: string,
-  filterFilenames?: string[]
+  filterFilenames?: string[],
+  history?: Array<{ role: string; content: string }>
 ): () => void {
   const controller = new AbortController();
 
   fetch(`${BACKEND}/query/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, model, document_filter: filterFilenames && filterFilenames.length > 0 ? filterFilenames : undefined }),
+    body: JSON.stringify({ 
+      question, 
+      model, 
+      document_filter: filterFilenames && filterFilenames.length > 0 ? filterFilenames : undefined, 
+      history: history && history.length > 0 ? history : undefined
+    }),
     signal: controller.signal,
   })
     .then(async (res) => {

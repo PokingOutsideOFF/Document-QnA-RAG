@@ -64,6 +64,15 @@ export function useChat() {
     (question: string, model?: string, filterFilenames?: string[]) => {
       if (isStreaming || !question.trim()) return;
 
+      // Extract last 3 completed conversation pairs (6 messages) as history
+      // Only completed messages are included - no is Streaming shells, no citations
+      // WHY 3 pairs? Each prior turn uses context window tokens. Too much history
+      // crowds out the retireved document chunks that are the whole point of RAG
+      const history = messages
+        .filter((m) => !m.isStreaming && m.content)
+        .slice(-6)
+        .map((m) => ({role: m.role, content: m.content}));
+
       const userMsg: Message = {
         id: crypto.randomUUID(),
         role: "user",
@@ -126,7 +135,8 @@ export function useChat() {
         },
 
         model,
-        filterFilenames
+        filterFilenames,
+        history
       );
     },
     [isStreaming],

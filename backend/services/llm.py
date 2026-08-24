@@ -21,6 +21,23 @@ WHY STREAMING (not waiting for the full response):
   We yield each "response" token as it arrives. FastAPI forwards it to the 
   browser as a Server-Sent Event immediately (no buffering).
 
+WHY /api/chat instead of api/generate (chanegd for conversation memory):
+  /api/generate takes a single flat prompt string. Multi-turn conversation
+  is possible but awkward, you manually concatenate "User: ... Assitant: ..."
+  into one string and hope the model parses the formatting correctly.
+
+  /api/chat takes a structured messages list:
+   [
+     {"role": "system",   "content": "You are QnA assitant"},
+     {"role": "user",     "content": "What is X?"},
+     {"role": "assitant", "content": "X is ..."}
+   ]
+   The model sees the conversation structure natively, it was trained on this format
+   so it handles follow-up questions correctly without prompt hacks.
+
+   The response token is now at data["message"]["content"] instead of 
+   data["response"] the only parsing change needed.
+  
 WHY httpx(not requests):
   The `requests` library reads the entire response into memory before 
   returning it. httpx.AsyncClient with client.stream() reads the response 
@@ -32,6 +49,12 @@ WHY temperature=0.1:
   - temperature=0.1: the model almost always picks the highest-probability token
   For RAG, we want the model to synthesize the retrieved passages accurately, 
   not invent creative variations. Low temperature = more faithful, factual output.
+
+WHY only send last 3 conversation pairs (not all history):
+  Each prior turn consumes tokens from context window (4096 by default).
+  Sending too much history squeezes out the retrived document chunks, which defeats
+  the purpose of RAG. 3 pairs (6 messages) balances follow-up coherences against
+  context window pressure.  
 
 NHY the system prompt says "I don't have enough information": 
   Without explicit grounding instructions, LLMs hallucinate. They will 
@@ -53,23 +76,22 @@ from typing import AsyncIterator, List, Dict
 
 from config import settings
 
-async def stream_ollama(prompt: str, system_prompt: str, model: str | None = None) -> AsyncIterator[str]:
+async def stream_ollama(messages: List[Dict[str, str]], model: str | None = None) -> AsyncIterator[str]:
     """
-    Calls Ollama's /api/generate endpoint with stream=True.
-    Yields individual token strins as they arrive from the model.
+    Calls Ollama's /api/chat endpoint with stream=True.
+    `messsages` is the full conversation: system + history + current_user_turn
     `model` overrides the default from config, used by the model switcher.
     """
     payload = {
         "model": model or settings.OLLAMA_MODEL,
-        "prompt": prompt,
-        "system": system_prompt,
+        "messages": messages,
         "stream": True,
         "options":{
             "temperature":0.1,
-            #num_ctx: the model's context window in tokens
-            # Must we large enough to hold: system_prompt + retrieved_chunks + question + answer.
+            # num_ctx: the model's context window in tokens
+            # Must be large enough to hold: system_prompt + retrieved_chunks + question + answer.
             # With TOP_K=5 and CHUNK_SIZE=500, chunks alone are ~600 tokens
-            #4096 is safe; increase to 8192 if answers cut off.
+            # 4096 is safe; increase to 8192 if answers cut off.
             "num_ctx": 4096,
         }
     }
@@ -77,7 +99,7 @@ async def stream_ollama(prompt: str, system_prompt: str, model: str | None = Non
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream(
             "POST",
-            f"{settings.OLLAMA_BASE_URL}/api/generate",
+            f"{settings.OLLAMA_BASE_URL}/api/chat",
             json=payload,
         ) as response:
             response.raise_for_status()
@@ -85,31 +107,43 @@ async def stream_ollama(prompt: str, system_prompt: str, model: str | None = Non
                 if not line.strip():
                     continue
                 data = json.loads(line)
-                token = data.get("response", "")
+                # /api/chat puts token at data["message"]["content"]
+                # different from /api/generate which used data["response"]
+                token = data.get("message", {}).get("content", "")
                 if token:
                     yield token
                 if data.get("done", False):
                     return
 
-def build_prompt(question: str, retrieved_chunks: List[Dict]) -> tuple[str, str]:
+def build_prompt(question: str, retrieved_chunks: List[Dict], history: List[Dict[str, str]] | None = None) -> List[Dict[str, str]]:
     """
-    Constructs the system prompt
+    Builds the messages list for /api/chat.
 
-    The context block lists each retrieved chunk with a [Source N] label.
-    The model is instructed to reference these labels in its answer - 
-    the frontend uses them to render clickable citation badges.
+    Structure:
+      [system]: grounding instructions always first
+      [user/assitant]: prior conversation turns (last 3 pairs max)
+      [user]: current quesion with retrieved context injected
 
-    Returns: (syste,_prompt, user_prompt) as seperate strings.
-    Ollama handles them seperately to apply the correct chat templates for the model.
+    WHY inject context into CURRENT user message (not earlier turns)?
+      Retrieval runs fresh for every question. The chunks relevant to "What
+      is X?" are different from those relevant to "Can you elaborate on X?"
+      Each turn retrieves its own context and injects it only into that turn's
+      message, so the model always answers from fresh evidence, not stale context
+      from a previous question.
+
+    Returns a list of {role, content} dicts ready to send to /api/chat
     """
 
-    system_prompt = (
-        "You are a precise document Q&A assitant. "
-        "Answer questions using ONLY the provided context passages"
-        "If the answer is not in the context, say exactly: "
-        "'I don't have enough information in the provided documents to answer that.' "
-        "Cite which passage supports each claim using [Source N] notation"
-    )
+    system_message = {
+        "role": "system",
+        "content": (
+            "You are a precise document Q&A assitant. "
+            "Answer questions using ONLY the provided context passages"
+            "If the answer is not in the context, say exactly: "
+            "'I don't have enough information in the provided documents to answer that.' "
+            "Cite which passage supports each claim using [Source N] notation"
+        )
+    }
 
     context_block = "\n\n".join(
         f"[Source {i + 1}] (from '{c['metadata']['source_filename']}', "
@@ -117,10 +151,18 @@ def build_prompt(question: str, retrieved_chunks: List[Dict]) -> tuple[str, str]
         for i, c in enumerate(retrieved_chunks)
     )
 
-    user_prompt = (
-        f"Context passages:\n{context_block}\n\n"
-        f"Question: {question}\n\n"
-        f"Answer: (cite sources using [Source N])"
-    )
+    current_user_message = {
+        "role": "user",
+        "content":(
+            f"Context passages:\n{context_block}\n\n"
+            f"Question: {question}\n\n"
+            f"Answer: (cite sources using [Source N])"
+        ),
+    }
 
-    return system_prompt, user_prompt
+    messages = [system_message]
+    if history:
+        messages.extend(history)
+    messages.append(current_user_message)
+
+    return messages

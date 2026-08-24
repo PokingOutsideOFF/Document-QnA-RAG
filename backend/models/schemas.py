@@ -15,13 +15,16 @@ class Citation(BaseModel):
     chunk_text: str # the actual message shown in the frontend popover on hover
     distance: float #cosine distance between the query and the chunk embedding
 
+class HistoryMessage(BaseModel):
+    role: str # user or assitant
+    content: str
 
 class QueryRequest(BaseModel):
     question: str
     top_k: Optional[int] = None # overrides config default when provided
     model: Optional[str] = None # Ollama model to use (override config default)
     document_filter: Optional[List[str]] = None # if set, only search those filenames
-
+    history: Optional[List[HistoryMessage]] = None # prior conversation turns (last N pairs)
 
 # Every Server-Sent Event the backend sends to the browser is one of these shapes:
 # {"type": "citation", "citations": [...]} - sent first, before any tokens
