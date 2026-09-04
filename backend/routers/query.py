@@ -40,7 +40,7 @@ from fastapi.responses import StreamingResponse
 from config import settings
 from models.schemas import Citation, QueryRequest
 from services.embedder import embed_query
-from services.llm import build_prompt, stream_ollama
+from services.llm import build_prompt, stream_groq, stream_ollama
 from services.vector_store import query_similar
 
 router = APIRouter(prefix="/query", tags=["query"])
@@ -103,8 +103,10 @@ async def query_document(body: QueryRequest):
         # Step 4: build the messages list (system + history + context + question)
         messages = build_prompt(question, retrieved, history=history)
 
-        # Step 5: stream tokens from Ollama one by one
-        async for token in stream_ollama(messages, model=model):
+        # Step 5: stream tokens - Groq in production (USE_GROQ=True), Ollama locally.
+        # Both functions yield token strings, so the rest of the pipeline is identical.
+        streamer = stream_groq if settings.USE_GROQ else stream_ollama
+        async for token in streamer(messages, model=model):
             yield f'data: {json.dumps({"type": "token", "content": token})}\n\n'
 
         # Step 6: signal that streaming is complete

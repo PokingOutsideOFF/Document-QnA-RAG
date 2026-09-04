@@ -17,34 +17,22 @@ export default function Home() {
   const [model, setModel] = useState("llama3.1:8b");
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
-  /**
-   * WHY darkmode: 'class' instead of the default media query approach?
-   *  Tailwind's default dark mode reads the OS preference (prefers-color-scheme)
-   *  The 'class' strategy instead activates dark styles only when a 'dark' class
-   *  exists on an ancestor element usually <html>. This gives us manual toggle
-   *  that the user controls, independent of their OS setting.
-   *
-   * WHY useEffect to apply class?
-   *  React renders the <html> element on the server. We can only safely manipulate
-   *  document.documentElement( the html tag) inside useEffect, which runs only
-   *  in the browser after the component mounts, never during SSR.
-   *
-   * WHY localStorage?
-   *  Without persistence, the preference resets on every page refresh.
-   *  localStorage survives refreshses and is synchronously readable on mount,
-   *  so initial state can be seeded from it without a flicker.
-   */
-
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem("theme") === "dark";
-    } catch {
-      return false;
-    }
-  });
+  // Keep the initial render identical on the server and client. Browser-only
+  // theme state is restored after hydration to avoid changing the SVG tree.
+  const [darkMode, setDarkMode] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
 
   useEffect(() => {
+    try {
+      setDarkMode(localStorage.getItem("theme") === "dark");
+    } catch {
+      setDarkMode(false);
+    }
+    setThemeLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!themeLoaded) return;
     const root = document.documentElement;
     if (darkMode) {
       root.classList.add("dark");

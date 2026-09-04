@@ -76,6 +76,36 @@ from typing import AsyncIterator, List, Dict
 
 from config import settings
 
+async def stream_groq(
+        messages: List[Dict[str, str]],
+        model: str | None = None
+) -> AsyncIterator[str]:
+    """
+    Calls Groq's chat completions API with streaming.
+
+    WHY Groq in production:
+      Ollama needs 4-8 GB RAM to load llama3.1:8b. Groq runs same Llama models on 
+      their own hardware and exposes them via HTTP API. The interface follows OpenAI AI spec,
+      which is the industry standard (same pattern for OpenAI, Groq, Azure)
+
+    The Groq SDK is async and returns an async iterator of chunks, each with a 
+    `choices[0].delta.content` field - identical structure to OpenAI streaming.
+    """
+    from groq import AsyncGroq
+
+    client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+    stream = await client.chat.completions.create(
+        model=model or settings.GROQ_MODEL,
+        messages=messages,
+        stream=True,
+        temperature=0.1,
+    )
+    async for chunk in stream:
+        token = chunk.choices[0].delta.content or ""
+        if token:
+            yield token
+
+
 async def stream_ollama(messages: List[Dict[str, str]], model: str | None = None) -> AsyncIterator[str]:
     """
     Calls Ollama's /api/chat endpoint with stream=True.

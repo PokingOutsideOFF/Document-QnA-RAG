@@ -1,25 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import documents, query
+from config import settings
+from routers import documents, models, query
 
 app = FastAPI(
     title = "Local RAG Q&A",
-    description = "A local RAG Q&A system that allows you to upload documents and ask questions about them.",
+    description = "Docuemnt RAG Q&A using Ollama (local) or Groq (production) + sentence-transformers + Chroma",
     version = "1.0.0",
 )
 
-# CORS lets the Next.js dev server (localhost: 3000) call this API.
-# Without it, browsers block cross-origin requests for security reasons.
+# ALLOWED_ORIGINS is a comma-seperated string from config (env var in production)
+# Splitting it here gives a listwithout hardcoding either in source code.
+# WHY env var: the frontend URL changes between local dev and production never hardcode the production URL in source code.
+origins = [o.strip() for o in settings.ALLOW_ORIGINS.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(documents.router)
+app.include_router(models.router)
 app.include_router(query.router)
 
 @app.get("/health")

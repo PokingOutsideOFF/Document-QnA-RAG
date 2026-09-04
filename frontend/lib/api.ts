@@ -56,12 +56,12 @@ export async function deleteDocument(filename: string): Promise<void> {
  */
 export async function listOllamaModels(): Promise<string[]> {
   try {
-    const res = await fetch("http://localhost:11434/api/tags");
+    const res = await fetch(`${BACKEND}/models/`);
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.models ?? []).map((m: { name: string }) => m.name);
+    return data.models ?? [];
   } catch {
-    return []; //ollama not running or unreachable , fails silently
+    return [];
   }
 }
 

@@ -6,6 +6,14 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1:8b"
 
+    # Groq - cloud LLL API used in production
+    # Set USE_GROQ=true and GROQ_API_KEY in the cloud platform's env var dashboard.
+    # WHY Groq: Ollama needs 4-8 GB RAM which free cloud tiers don't provide.
+    # Groq serves the same llama models via API, so the output is identical
+    USE_GROQ: bool = False
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
+
     #Chroma vector store - persists to disk in this folder
     CHROMA_PATH: str = "./chroma_db"
     CHROMA_COLLECTION: str = "documents"
@@ -25,6 +33,10 @@ class Settings(BaseSettings):
     # Cosine distance: 0.0 = identical vectors , 1.0 = completely unrelated.
     # 0.5 is good starting point, lower = stricter(fewer but better results).
     RELEVANCE_THRESHOLD: float = 0.8
+
+    # CORS - comma seperated list of allowed frontend origins
+    # In production, set this to Vercel URL in cloud platform dashboard
+    ALLOW_ORIGINS: str = "http://localhost:3000"
 
     UPLOAD_DIR: str = "./uploads"
     ALLOWED_EXTENSIONS: List[str] = [".pdf", ".txt", ".docx"]
