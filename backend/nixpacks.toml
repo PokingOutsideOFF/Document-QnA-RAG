@@ -1,0 +1,2 @@
+[phase.setup]
+nixPkgs = ["mupdf", "mupdf-dev", "swig", "freetype", "harfbuzz"]
