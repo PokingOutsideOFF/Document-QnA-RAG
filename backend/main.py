@@ -13,7 +13,7 @@ app = FastAPI(
 # ALLOWED_ORIGINS is a comma-seperated string from config (env var in production)
 # Splitting it here gives a listwithout hardcoding either in source code.
 # WHY env var: the frontend URL changes between local dev and production never hardcode the production URL in source code.
-origins = [o.strip() for o in settings.ALLOW_ORIGINS.split(",") if o.strip()]
+origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
