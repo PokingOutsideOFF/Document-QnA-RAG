@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # CORS - comma seperated list of allowed frontend origins
     # In production, set this to Vercel URL in cloud platform dashboard
-    ALLOW_ORIGINS: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000"
 
     UPLOAD_DIR: str = "./uploads"
     ALLOWED_EXTENSIONS: List[str] = [".pdf", ".txt", ".docx"]
